@@ -1,1 +1,127 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>تتبع صفقات الحيتان - DEX Screener</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      background-color: #0d1117;
+      color: #ffffff;
+      font-family: 'Poppins', sans-serif;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+      color: #90caf9;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+    }
+    .card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 15px;
+      padding: 20px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.5);
+      transition: transform 0.3s;
+    }
+    .card:hover {
+      transform: translateY(-5px);
+    }
+    .buy {
+      color: #00e676;
+      font-weight: bold;
+    }
+    .sell {
+      color: #ff1744;
+      font-weight: bold;
+    }
+    .small {
+      font-size: 14px;
+      color: #aaa;
+    }
+    #loadMore {
+      display: block;
+      margin: 30px auto;
+      padding: 10px 20px;
+      background: #1976d2;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: background 0.3s;
+    }
+    #loadMore:hover {
+      background: #1565c0;
+    }
+  </style>
+</head>
+<body>
+  <h1>🚀 تتبع السيولة - صفقات الحيتان من DEX Screener</h1>
+  <div id="trades" class="grid"></div>
+  <button id="loadMore">عرض المزيد</button>
 
+  <script>
+    const excludedCoins = ['BTC', 'ETH', 'SOL', 'XRP'];
+    let allTrades = [];
+    let shownTrades = 0;
+    const batchSize = 10;
+
+    async function fetchTrades() {
+      try {
+        const res = await fetch('https://api.dexscreener.com/latest/dex/trades');
+        if (!res.ok) throw new Error('فشل الاتصال بواجهة DEX Screener');
+
+        const data = await res.json();
+        
+        if (!data.trades) throw new Error('البيانات غير صحيحة من DEX Screener');
+
+        allTrades = data.trades
+          .filter(trade => trade.amountUsd > 500000)
+          .filter(trade => !excludedCoins.includes(trade.baseToken.symbol))
+          .sort((a, b) => b.liquidity.usd - a.liquidity.usd);
+
+        renderTrades();
+      } catch (error) {
+        console.error('خطأ في جلب البيانات:', error);
+      }
+    }
+
+    function renderTrades() {
+      const container = document.getElementById('trades');
+      container.innerHTML = '';
+
+      allTrades.slice(0, shownTrades + batchSize).forEach(trade => {
+        const card = document.createElement('div');
+        card.className = 'card';
+
+        card.innerHTML = `
+          <h2>${trade.baseToken.symbol}</h2>
+          <p class="${trade.side === 'BUY' ? 'buy' : 'sell'}">
+            ${trade.side === 'BUY' ? '🟢 شراء' : '🔴 بيع'}
+          </p>
+          <p>💰 ${Number(trade.amountUsd).toLocaleString()} $</p>
+          <p class="small">⏰ منذ ${Math.floor((Date.now() - new Date(trade.blockTimestamp * 1000).getTime()) / 60000)} دقيقة</p>
+          <p class="small">📈 السيولة: ${trade.liquidity?.usd ? Number(trade.liquidity.usd).toLocaleString() + ' $' : 'غير متوفر'}</p>
+          <p class="small">🌐 ${trade.dexId || 'غير معروف'}</p>
+        `;
+        container.appendChild(card);
+      });
+
+      shownTrades += batchSize;
+    }
+
+    document.getElementById('loadMore').addEventListener('click', renderTrades);
+
+    fetchTrades();
+    setInterval(fetchTrades, 60000); // يحدث كل دقيقة
+  </script>
+</body>
+</html>
