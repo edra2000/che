@@ -1,96 +1,91 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-  <title>🚀 تتبع السيولة - صفقات الحيتان من DEX Screener</title>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
-  <style>
-    body {
-      background: #0d1117;
-      color: white;
-      font-family: 'Poppins', sans-serif;
-      margin: 0;
-      padding: 20px;
-    }
-    h1 {
-      text-align: center;
-      color: #90caf9;
-      margin-bottom: 20px;
-    }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-      gap: 20px;
-    }
-    .card {
-      background: #161b22;
-      border: 1px solid #30363d;
-      border-radius: 12px;
-      padding: 20px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.5);
-      transition: transform 0.3s;
-    }
-    .card:hover {
-      transform: translateY(-5px);
-    }
-    .symbol {
-      font-size: 24px;
-      font-weight: bold;
-    }
-    .info {
-      font-size: 14px;
-      margin-top: 10px;
-      color: #aaa;
-    }
-    .high-liquidity {
-      color: #00e676;
-      font-weight: bold;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>أفضل العملات حسب السيولة - لحظياً</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #0d1117;
+            color: #fff;
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #90caf9;
+            margin-bottom: 20px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+        }
+        .card {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 15px;
+            padding: 15px;
+            transition: transform 0.3s;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        .coin-symbol {
+            font-size: 22px;
+            font-weight: bold;
+            color: #00e676;
+        }
+        .coin-details {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #ccc;
+        }
+    </style>
 </head>
 <body>
-  <h1>🚀 أفضل العملات حسب السيولة - لحظياً</h1>
-  <div id="pairs" class="grid"></div>
+    <h1>🚀 أفضل العملات حسب السيولة - لحظياً</h1>
+    <div id="coins" class="grid"></div>
 
-  <script>
-    async function fetchPairs() {
-      try {
-        const res = await fetch('https://api.dexscreener.com/latest/dex/pairs');
-        const data = await res.json();
-        
-        if (!data.pairs) {
-          console.error('لا توجد بيانات.');
-          return;
+    <script>
+        async function fetchCoins() {
+            try {
+                const response = await fetch('https://api.dexscreener.com/latest/dex/tokens');
+                const data = await response.json();
+                const excluded = ['BTC', 'ETH', 'SOL', 'XRP'];
+
+                const filtered = data.pairs
+                    .filter(pair => 
+                        pair.liquidity?.usd > 500000 && 
+                        !excluded.includes(pair.baseToken.symbol)
+                    )
+                    .sort((a, b) => b.liquidity.usd - a.liquidity.usd)
+                    .slice(0, 30); // عرض أفضل 30 عملة فقط
+
+                const container = document.getElementById('coins');
+                container.innerHTML = '';
+
+                filtered.forEach(pair => {
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    card.innerHTML = `
+                        <div class="coin-symbol">${pair.baseToken.symbol}</div>
+                        <div class="coin-details">💧 السيولة: ${Number(pair.liquidity.usd).toLocaleString()} $</div>
+                        <div class="coin-details">📈 الحجم 24س: ${Number(pair.volume.h24).toLocaleString()} $</div>
+                        <div class="coin-details">🔄 التغير 24س: ${pair.priceChange.h24 || 'غير متوفر'}%</div>
+                        <div class="coin-details">🌐 المنصة: ${pair.dexId || 'غير معروفة'}</div>
+                    `;
+                    container.appendChild(card);
+                });
+            } catch (error) {
+                console.error('حدث خطأ أثناء جلب البيانات:', error);
+            }
         }
-        
-        const container = document.getElementById('pairs');
-        container.innerHTML = '';
 
-        const filtered = data.pairs
-          .filter(pair => pair.liquidity && pair.liquidity.usd > 500000)
-          .sort((a, b) => b.liquidity.usd - a.liquidity.usd)
-          .slice(0, 50);
-
-        filtered.forEach(pair => {
-          const card = document.createElement('div');
-          card.className = 'card';
-          card.innerHTML = `
-            <div class="symbol">${pair.baseToken.symbol} / ${pair.quoteToken.symbol}</div>
-            <div class="info">💰 السيولة: <span class="high-liquidity">${Number(pair.liquidity.usd).toLocaleString()} $</span></div>
-            <div class="info">📈 حجم التداول 24س: ${pair.volume ? Number(pair.volume.h24).toLocaleString() : 'غير متوفر'} $</div>
-            <div class="info">🌐 الشبكة: ${pair.chainId}</div>
-            <div class="info">🔗 <a href="${pair.url}" target="_blank" style="color:#90caf9;">رابط الصفقة</a></div>
-          `;
-          container.appendChild(card);
-        });
-
-      } catch (err) {
-        console.error('فشل تحميل البيانات:', err);
-      }
-    }
-
-    fetchPairs();
-    setInterval(fetchPairs, 60000); // تحديث كل دقيقة
-  </script>
+        fetchCoins();
+        setInterval(fetchCoins, 60000); // تحديث كل دقيقة
+    </script>
 </body>
 </html>
